@@ -3,6 +3,7 @@
 This repository contains Python scripts for extracting digital endocasts from micro-CT scans of animal skulls (stored as NIfTI volumes). It was developed as part of our bachelor thesis at the Technical University of Denmark (DTU).
 
 **Authors:** Christian Bjerregaard and Aske Rove
+
 **Last updated:** June 10, 2025
 
 ---
