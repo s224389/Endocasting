@@ -1,0 +1,95 @@
+from preprocessing import preprocessing
+
+import numpy as np
+import nibabel as nib
+import time
+from scipy.ndimage import label
+from scipy.spatial import Delaunay
+import pyvista as pv  
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+
+
+nifti_path_pca =".nii"
+subsampling_factor = None
+alpha_value = 0
+
+
+# Load the NIfTI file and preprocess it
+largest_blob_mask, _ = preprocessing(nifti_path_pca)
+
+# Find the indices of the voxels that are inside the mask
+points = np.argwhere(largest_blob_mask)
+
+# Check, if the user provided a subsampling factor and alpha value
+# Otherwise use default values
+if subsampling_factor is None:
+    subsampling_factor = int(np.ceil(len(points)/5000))
+if alpha_value is None:
+    alpha_value = 1000
+
+points_new = points[::subsampling_factor]
+
+points_new = np.array(points_new, dtype=np.float32)
+
+point_cloud = pv.PolyData(points_new)
+
+mesh = point_cloud.delaunay_3d(alpha=alpha_value)
+
+surface = mesh.extract_geometry()
+
+surface.compute_normals(inplace=True, consistent_normals=True, auto_orient_normals=True)
+
+
+
+
+
+
+surface_points = surface.points                                # (M,3) array
+tri = Delaunay(surface_points)  
+
+faces = surface.faces.reshape(-1, 4)[:, 1:]     # (K,3) indices
+tri_vertices = surface_points[faces]            # list[ndarray(K,3,3)]
+
+# --- 2-C  actual plot --------------------------------------------
+fig = plt.figure(figsize=(8, 8))
+ax = fig.add_subplot(111, projection="3d")
+
+# scatter: skull surface points (sub-sampled)
+ax.scatter(
+    points_new[:, 0],
+    points_new[:, 1],
+    points_new[:, 2],
+    s=10,
+    c="black",
+    alpha=0.7,
+    label="surface points (subsampled)",
+)
+
+# mesh: outer α-shape shell
+surf_coll = Poly3DCollection(
+    tri_vertices,
+    linewidths=0,            # Remove mesh lines
+    edgecolors='none',       # No edge color
+    alpha=0.6,               # Adjust opacity if needed
+)
+surf_coll.set_facecolor("lightblue")
+ax.add_collection3d(surf_coll)
+
+# ------------ aesthetics ------------------------------------------------
+# keep aspect ratio equal
+mins = surface_points.min(axis=0)
+maxs = surface_points.max(axis=0)
+center = (mins + maxs) * 0.5
+scale = (maxs - mins).max() * 0.5
+ax.set_xlim(center[0] - scale, center[0] + scale)
+ax.set_ylim(center[1] - scale, center[1] + scale)
+ax.set_zlim(center[2] - scale, center[2] + scale)
+
+ax.set_xlabel("PC1 (voxel)")
+ax.set_ylabel("PC2 (voxel)")
+ax.set_zlabel("PC3 (voxel)")
+ax.set_title("α-shape surface mesh and skull point cloud")
+plt.tight_layout()
+plt.show()
