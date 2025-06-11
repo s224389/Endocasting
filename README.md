@@ -48,5 +48,9 @@ python script.py
 * `graph_cut_funcs.py`: Iterative mesh extraction and refinement functions.
 
 ---
+* `Visualization/`: Contains various scripts used for visualizations in our thesis.
+---
 
 Feel free to contact us for further details or questions regarding the usage of these scripts.
+
+
